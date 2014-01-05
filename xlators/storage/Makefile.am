@@ -4,4 +4,8 @@ if ENABLE_BD_XLATOR
 SUBDIRS += bd
 endif
 
+if ENABLE_BDB_XLATOR
+SUBDIRS += bdb
+endif
+
 CLEANFILES =

@@ -55,6 +55,8 @@ AC_CONFIG_FILES([Makefile
                 xlators/storage/posix/src/Makefile
                 xlators/storage/bd/Makefile
                 xlators/storage/bd/src/Makefile
+                xlators/storage/bdb/Makefile
+                xlators/storage/bdb/src/Makefile
                 xlators/cluster/Makefile
                 xlators/cluster/afr/Makefile
                 xlators/cluster/afr/src/Makefile
@@ -345,6 +347,68 @@ if test "x${enable-bd-xlator}" != "xno" -a "x${HAVE_BD_LIB}" = "xyes"; then
 fi
 
 AM_CONDITIONAL([ENABLE_BD_XLATOR], [test x$BUILD_BD_XLATOR = xyes])
+
+# Berkely-DB section
+# storage/bdb requires Berkeley-DB version 4.6.21 or higher
+_GLFS_DB_VERSION_MAJOR=4
+_GLFS_DB_VERSION_MINOR=6
+_GLFS_DB_VERSION_PATCH=21
+AC_ARG_ENABLE([db],
+              AC_HELP_STRING([--disable-bdb],
+                             [Do not build the Berkeley-DB translator]))
+
+if test "x$enable_bdb" != "xno"; then
+   AC_CHECK_HEADERS([db.h],
+                    [HAVE_BDB="yes"],
+                    [HAVE_BDB="no"])
+   if test "x$HAVE_BDB" = "xyes"; then
+      AC_CHECK_LIB([db],
+                   [db_create],
+                   [HAVE_BDB="yes"],
+                   [HAVE_BDB="no"])
+   fi
+
+   if test "x$HAVE_BDB" = "xyes"; then
+      AC_TRY_COMPILE([#include <db.h>],
+                      #if (DB_VERSION_MAJOR < $_GLFS_DB_VERSION_MAJOR) ||\
+                          (DB_VERSION_MAJOR == $_GLFS_DB_VERSION_MAJOR && \
+                           DB_VERSION_MINOR < $_GLFS_DB_VERSION_MINOR) || \
+                          (DB_VERSION_MAJOR == $_GLFS_DB_VERSION_MAJOR && \
+                           DB_VERSION_MINOR == $_GLFS_DB_VERSION_MINOR && \
+                           DB_VERSION_PATCH < $_GLFS_DB_VERSION_PATCH)
+                      #error "bdb older than required"
+                      #endif
+                      ,
+                     [HAVE_BDB_VERSION="yes"],
+                     [HAVE_BDB_VERSION="no"])
+
+      dnl check for DB->stat having 4 arguments.
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <db.h>]],
+                        [[DB *bdb; bdb->stat (NULL, NULL, NULL, 0);]])],
+                        [HAVE_BDB_VERSION=yes], [HAVE_BDB_VERSION=no])
+
+      dnl check for DBC->c_get presence.
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <db.h>]],
+                        [[DBC *cursor; cursor->get (NULL, NULL, NULL, 0);]])],
+                        [HAVE_BDB_CURSOR_GET=yes], [HAVE_BDB_CURSOR_GET=no])
+
+   fi
+fi
+
+if test "x$HAVE_BDB_CURSOR_GET" = "xyes" -a "x$HAVE_BDB_VERSION" = "xyes"; then
+   AC_DEFINE(HAVE_BDB_CURSOR_GET, 1, [Berkeley-DB version has cursor->get()])
+fi
+
+if test "x$enable_bdb" = "xyes" -a "x$HAVE_BDB" = "xno" -a "x$HAVE_BDB_VERSION" = "xno" -a "x$HAVE_BDB_CURSOR_GET" = "xno"; then
+   echo "Berkeley-DB requested but not found. glusterfs bdb feature requires db version 4.6.21 or higher"
+   exit 1
+fi
+
+BUILD_BDB_XLATOR=no
+if test "x$enable_bdb" != "xno" -a "x$HAVE_BDB" = "xyes"; then
+      BUILD_BDB_XLATOR=yes
+fi
+AM_CONDITIONAL([ENABLE_BDB_XLATOR], [test x$BUILD_BDB_XLATOR = xyes])
 
 # start encryption/crypt section
 
@@ -904,6 +968,7 @@ echo "Linux-AIO            : $BUILD_LIBAIO"
 echo "Enable Debug         : $BUILD_DEBUG"
 echo "systemtap            : $BUILD_SYSTEMTAP"
 echo "Block Device xlator  : $BUILD_BD_XLATOR"
+echo "Berkeley-DB          : $BUILD_BDB_XLATOR"
 echo "glupy                : $BUILD_GLUPY"
 echo "Use syslog           : $USE_SYSLOG"
 echo "XML output           : $BUILD_XML_OUTPUT"
