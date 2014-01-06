@@ -329,10 +329,6 @@ struct bdb_private {
         /* length of 'export_path' string */
         int32_t             export_path_length;
 
-        /* statistics */
-        /* Statistics, provides activity of the server */
-        struct xlator_stats stats;
-
         struct timeval      prev_fetch_time;
         struct timeval      init_time;
         int32_t             max_read;           /* */

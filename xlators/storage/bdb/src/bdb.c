@@ -3004,83 +3004,6 @@ out:
         return 0;
 }
 
-
-int32_t
-bdb_stats (call_frame_t *frame,
-           xlator_t *this,
-           int32_t flags)
-
-{
-        int32_t op_ret   = 0;
-        int32_t op_errno = 0;
-
-        struct xlator_stats xlstats = {0, }, *stats = NULL;
-        struct statvfs buf = {0,};
-        struct timeval tv;
-        struct bdb_private *private = NULL;
-        int64_t avg_read = 0;
-        int64_t avg_write = 0;
-        int64_t _time_ms = 0;
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-
-        private = (struct bdb_private *)(this->private);
-        stats = &xlstats;
-
-        op_ret = statvfs (private->export_path, &buf);
-        if (op_ret != 0) {
-                op_errno = errno;
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "STATS %s: %s",
-                        private->export_path, strerror (op_errno));
-                goto out;
-        }
-
-        stats->nr_files = private->stats.nr_files;
-
-        /* client info is maintained at FSd */
-        stats->nr_clients = private->stats.nr_clients;
-
-        /* Number of Free block in the filesystem. */
-        stats->free_disk       = buf.f_bfree * buf.f_bsize;
-        stats->total_disk_size = buf.f_blocks * buf.f_bsize; /* */
-        stats->disk_usage      = (buf.f_blocks - buf.f_bavail) * buf.f_bsize;
-
-        /* Calculate read and write usage */
-        gettimeofday (&tv, NULL);
-
-        /* Read */
-        _time_ms = (tv.tv_sec - private->init_time.tv_sec) * 1000 +
-                ((tv.tv_usec - private->init_time.tv_usec) / 1000);
-
-        avg_read  = (_time_ms) ? (private->read_value / _time_ms) : 0;/* KBps */
-        avg_write = (_time_ms) ? (private->write_value / _time_ms) : 0;
-
-        _time_ms = (tv.tv_sec - private->prev_fetch_time.tv_sec) * 1000 +
-                ((tv.tv_usec - private->prev_fetch_time.tv_usec) / 1000);
-        if (_time_ms
-            && ((private->interval_read / _time_ms) > private->max_read)) {
-                private->max_read = (private->interval_read / _time_ms);
-        }
-        if (_time_ms
-            && ((private->interval_write / _time_ms) > private->max_write)) {
-                private->max_write = private->interval_write / _time_ms;
-        }
-
-        stats->read_usage = avg_read / private->max_read;
-        stats->write_usage = avg_write / private->max_write;
-
-        gettimeofday (&(private->prev_fetch_time), NULL);
-        private->interval_read = 0;
-        private->interval_write = 0;
-
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, stats);
-        return 0;
-}
-
-
 int32_t
 bdb_inodelk (call_frame_t *frame, xlator_t *this,
              const char *volume, loc_t *loc, int32_t cmd, struct flock *lock)
@@ -3485,10 +3408,6 @@ fini (xlator_t *this)
         FREE (private);
         return;
 }
-
-struct xlator_mops mops = {
-        .stats    = bdb_stats,
-};
 
 struct xlator_fops fops = {
         .lookup      = bdb_lookup,
