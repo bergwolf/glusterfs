@@ -82,10 +82,10 @@ bdb_mknod (call_frame_t *frame,
 
         if (!S_ISREG(mode)) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKNOD %"PRId64"/%s (%s): EPERM"
+                        "MKNOD %s/%s (%s): EPERM"
                         "(mknod supported only for regular files. "
                         "file mode '%o' not supported)",
-                        loc->parent->ino, loc->name, loc->path, mode);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path, mode);
                 op_ret = -1;
                 op_errno = EPERM;
                 goto out;
@@ -94,9 +94,9 @@ bdb_mknod (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKNOD %"PRId64"/%s (%s): ENOMEM"
+                        "MKNOD %s/%s (%s): ENOMEM"
                         "(failed to lookup database handle)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -108,9 +108,9 @@ bdb_mknod (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = EINVAL;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKNOD %"PRId64"/%s (%s): EINVAL"
+                        "MKNOD %s/%s (%s): EINVAL"
                         "(failed to lookup database handle)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 goto out;
         }
 
@@ -127,9 +127,9 @@ bdb_mknod (call_frame_t *frame,
                                                     stbuf.st_blksize);
         } else {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKNOD %"PRId64"/%s (%s): ENOMEM"
+                        "MKNOD %s/%s (%s): ENOMEM"
                         "(failed to create database entry)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = EINVAL; /* TODO: errno sari illa */
                 goto out;
@@ -289,9 +289,9 @@ bdb_create (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "CREATE %"PRId64"/%s (%s): ENOMEM"
+                        "CREATE %s/%s (%s): ENOMEM"
                         "(failed to lookup database handle)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -302,9 +302,9 @@ bdb_create (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = EINVAL;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "CREATE %"PRId64"/%s (%s): EINVAL"
+                        "CREATE %s/%s (%s): EINVAL"
                         "(database file missing)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 goto out;
         }
 
@@ -312,9 +312,9 @@ bdb_create (call_frame_t *frame,
         op_ret = bdb_db_icreate (bctx, key_string);
         if (op_ret < 0) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "CREATE %"PRId64"/%s (%s): ENOMEM"
+                        "CREATE %s/%s (%s): ENOMEM"
                         "(failed to create database entry)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_errno = EINVAL; /* TODO: errno sari illa */
                 goto out;
         }
@@ -323,9 +323,9 @@ bdb_create (call_frame_t *frame,
         bfd = CALLOC (1, sizeof (*bfd));
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "CREATE %"PRId64"/%s (%s): ENOMEM"
+                        "CREATE %s/%s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd context)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -336,9 +336,9 @@ bdb_create (call_frame_t *frame,
         bfd->key = strdup (key_string);
         if (bfd->key == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "CREATE %"PRId64" (%s): ENOMEM"
+                        "CREATE %s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd->key)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -390,9 +390,9 @@ bdb_open (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPEN %"PRId64" (%s): ENOMEM"
+                        "OPEN %s (%s): ENOMEM"
                         "(failed to lookup database handle)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -401,9 +401,9 @@ bdb_open (call_frame_t *frame,
         bfd = CALLOC (1, sizeof (*bfd));
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPEN %"PRId64" (%s): ENOMEM"
+                        "OPEN %s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd context)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -416,9 +416,9 @@ bdb_open (call_frame_t *frame,
         bfd->key = strdup (key_string);
         if (bfd->key == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPEN %"PRId64" (%s): ENOMEM"
+                        "OPEN %s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd->key)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -456,9 +456,9 @@ bdb_readv (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READV %"PRId64" - %"GF_PRI_SIZET",%"PRId64": EBADFD"
+                        "READV %s - %"GF_PRI_SIZET",%"PRId64": EBADFD"
                         "(internal fd not found through fd)",
-                        fd->inode->ino, size, offset);
+                        uuid_utoa (fd->inode->gfid), size, offset);
                 op_errno = EBADFD;
                 op_ret = -1;
                 goto out;
@@ -469,9 +469,9 @@ bdb_readv (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READV %"PRId64" - %"GF_PRI_SIZET",%"PRId64": EINVAL"
+                        "READV %s - %"GF_PRI_SIZET",%"PRId64": EINVAL"
                         "(database file missing)",
-                        fd->inode->ino, size, offset);
+                        uuid_utoa (fd->inode->gfid), size, offset);
                 goto out;
         }
 
@@ -489,9 +489,9 @@ bdb_readv (call_frame_t *frame,
         read_size = op_ret;
         if (op_ret == -1) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READV %"PRId64" - %"GF_PRI_SIZET",%"PRId64": EBADFD"
+                        "READV %s - %"GF_PRI_SIZET",%"PRId64": EBADFD"
                         "(failed to find entry in database)",
-                        fd->inode->ino, size, offset);
+                        uuid_utoa (fd->inode->gfid), size, offset);
                 op_ret   = -1;
                 op_errno = ENOENT;
                 goto out;
@@ -562,9 +562,9 @@ bdb_writev (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "WRITEV %"PRId64" - %"PRId32",%"PRId64": EBADFD"
+                        "WRITEV %s - %"PRId32",%"PRId64": EBADFD"
                         "(internal fd not found through fd)",
-                        fd->inode->ino, count, offset);
+                        uuid_utoa (fd->inode->gfid), count, offset);
                 op_ret = -1;
                 op_errno = EBADFD;
                 goto out;
@@ -575,9 +575,9 @@ bdb_writev (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_ERROR,
-                        "WRITEV %"PRId64" - %"PRId32",%"PRId64": EINVAL"
+                        "WRITEV %s - %"PRId32",%"PRId64": EINVAL"
                         "(database file missing)",
-                        fd->inode->ino, count, offset);
+                        uuid_utoa (fd->inode->gfid), count, offset);
                 goto out;
         }
 
@@ -586,10 +586,10 @@ bdb_writev (call_frame_t *frame,
 
         if (!is_space_left (this, total_size)) {
                 gf_log (this->name, GF_LOG_ERROR,
-                        "WRITEV %"PRId64" - %"PRId32" (%"GF_PRI_SIZET"),%"
+                        "WRITEV %s - %"PRId32" (%"GF_PRI_SIZET"),%"
                         PRId64": ENOSPC "
                         "(not enough space after internal measurement)",
-                        fd->inode->ino, count, total_size, offset);
+                        uuid_utoa (fd->inode->gfid), count, total_size, offset);
                 op_ret = -1;
                 op_errno = ENOSPC;
                 goto out;
@@ -601,9 +601,9 @@ bdb_writev (call_frame_t *frame,
                                        vector[idx].iov_len, c_off);
                 if (c_ret < 0) {
                         gf_log (this->name, GF_LOG_ERROR,
-                                "WRITEV %"PRId64" - %"PRId32",%"PRId64": EINVAL"
+                                "WRITEV %s - %"PRId32",%"PRId64": EINVAL"
                                 "(database write at %"PRId64" failed)",
-                                fd->inode->ino, count, offset, c_off);
+                                uuid_utoa (fd->inode->gfid), count, offset, c_off);
                         break;
                 } else {
                         c_off += vector[idx].iov_len;
@@ -645,9 +645,9 @@ bdb_flush (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "FLUSH %"PRId64": EBADFD"
+                        "FLUSH %s: EBADFD"
                         "(internal fd not found through fd)",
-                        fd->inode->ino);
+                        uuid_utoa (fd->inode->gfid));
                 op_ret = -1;
                 op_errno = EBADFD;
                 goto out;
@@ -673,9 +673,9 @@ bdb_release (xlator_t *this,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RELEASE %"PRId64": EBADFD"
+                        "RELEASE %s: EBADFD"
                         "(internal fd not found through fd)",
-                        fd->inode->ino);
+                        uuid_utoa (fd->inode->gfid));
                 op_ret = -1;
                 op_errno = EBADFD;
                 goto out;
@@ -718,10 +718,10 @@ bdb_lk (call_frame_t *frame,
 
         if (BDB_TIMED_LOG (ENOTSUP, gf_bdb_lk_log)) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "LK %"PRId64": ENOTSUP "
+                        "LK %s: ENOTSUP "
                         "(load \"features/locks\" translator to enable "
                         "lock support)",
-                        fd->inode->ino);
+                        uuid_utoa (fd->inode->gfid));
         }
 
         STACK_UNWIND (frame, -1, ENOTSUP, &nullock);
@@ -804,8 +804,8 @@ bdb_lookup (call_frame_t *frame,
                 if (op_ret != 0) {
                         op_errno = errno;
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "LOOKUP %"PRId64" (%s): %s",
-                                loc->ino, loc->path, strerror (op_errno));
+                                "LOOKUP %s (%s): %s",
+                                uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                         goto out;
                 }
 
@@ -814,9 +814,9 @@ bdb_lookup (call_frame_t *frame,
                 bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "LOOKUP %"PRId64" (%s): ENOMEM"
+                                "LOOKUP %s (%s): ENOMEM"
                                 "(failed to lookup database handle)",
-                                loc->ino, loc->path);
+                                uuid_utoa (loc->gfid), loc->path);
                         op_ret   = -1;
                         op_errno = ENOMEM;
                         goto out;
@@ -835,9 +835,9 @@ bdb_lookup (call_frame_t *frame,
                 bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "LOOKUP %"PRId64"/%s (%s): ENOMEM"
+                                "LOOKUP %s/%s (%s): ENOMEM"
                                 "(failed to lookup database handle)",
-                                loc->parent->ino, loc->name, loc->path);
+                                uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                         op_ret   = -1;
                         op_errno = ENOMEM;
                         goto out;
@@ -861,9 +861,9 @@ bdb_lookup (call_frame_t *frame,
                 bctx = bctx_parent (B_TABLE(this), loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "LOOKUP %"PRId64"/%s (%s): ENOMEM"
+                                "LOOKUP %s/%s (%s): ENOMEM"
                                 "(failed to lookup database handle)",
-                                loc->parent->ino, loc->name, loc->path);
+                                uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                         op_ret   = -1;
                         op_errno = ENOMEM;
                         goto out;
@@ -888,9 +888,9 @@ bdb_lookup (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "LOOKUP %"PRId64"/%s (%s): ENOMEM"
+                        "LOOKUP %s/%s (%s): ENOMEM"
                         "(failed to lookup database handle for parent)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -905,9 +905,9 @@ bdb_lookup (call_frame_t *frame,
         op_ret = entry_size;
         if (op_ret == -1) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "LOOKUP %"PRId64"/%s (%s): ENOENT"
+                        "LOOKUP %s/%s (%s): ENOENT"
                         "(database entry not found)",
-                        loc->parent->ino, loc->name, loc->path);
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
                 op_errno = ENOENT;
                 goto out;
         }
@@ -917,8 +917,8 @@ bdb_lookup (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "LOOKUP %"PRId64"/%s (%s): %s",
-                        loc->parent->ino, loc->name, loc->path,
+                        "LOOKUP %s/%s (%s): %s",
+                        uuid_utoa (loc->parent->gfid), loc->name, loc->path,
                         strerror (op_errno));
                 goto out;
         }
@@ -1018,9 +1018,9 @@ bdb_stat (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "STAT %"PRId64" (%s): ENOMEM"
+                        "STAT %s (%s): ENOMEM"
                         "(no database handle for parent)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -1031,9 +1031,9 @@ bdb_stat (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "STAT %"PRId64" (%s): %s"
+                        "STAT %s (%s): %s"
                         "(failed to stat on database file)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -1093,9 +1093,9 @@ bdb_opendir (call_frame_t *frame,
         bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPENDIR %"PRId64" (%s): ENOMEM"
+                        "OPENDIR %s (%s): ENOMEM"
                         "(no database handle for directory)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -1104,9 +1104,9 @@ bdb_opendir (call_frame_t *frame,
         bfd = CALLOC (1, sizeof (*bfd));
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPENDIR %"PRId64" (%s): ENOMEM"
+                        "OPENDIR %s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto err;
@@ -1117,8 +1117,8 @@ bdb_opendir (call_frame_t *frame,
                 op_ret   = -1;
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPENDIR %"PRId64" (%s): %s",
-                        loc->ino, loc->path, strerror (op_errno));
+                        "OPENDIR %s (%s): %s",
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto err;
         }
 
@@ -1128,9 +1128,9 @@ bdb_opendir (call_frame_t *frame,
         bfd->path = strdup (real_path);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "OPENDIR %"PRId64" (%s): ENOMEM"
+                        "OPENDIR %s (%s): ENOMEM"
                         "(failed to allocate memory for internal fd->path)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto err;
@@ -1189,10 +1189,10 @@ bdb_getdents (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
+                        "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64
                         " %o: EBADFD "
                         "(failed to find internal context in fd)",
-                        fd->inode->ino, size, off, flag);
+                        uuid_utoa (fd->inode->gfid), size, off, flag);
                 op_errno = EBADFD;
                 op_ret   = -1;
                 goto out;
@@ -1201,10 +1201,10 @@ bdb_getdents (call_frame_t *frame,
         op_ret = bdb_cursor_open (bfd->ctx, &cursorp);
         if (op_ret < 0) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
+                        "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64
                         ": EBADFD "
                         "(failed to open cursor to database handle)",
-                        fd->inode->ino, size, off);
+                        uuid_utoa (fd->inode->gfid), size, off);
                 op_errno = EBADFD;
                 goto out;
         }
@@ -1244,10 +1244,9 @@ bdb_getdents (call_frame_t *frame,
                         break;
                 } else if (op_ret < 0) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET
-                                ",%"PRId64":"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64":"
                                 "(failed to read the next entry from database)",
-                                fd->inode->ino, size, off);
+                                uuid_utoa (fd->inode->gfid), size, off);
                         op_errno = ENOENT;
                         break;
                 } /* if (op_ret == DB_NOTFOUND)...else if...else */
@@ -1256,20 +1255,19 @@ bdb_getdents (call_frame_t *frame,
                         /* NOTE: currently ignore when we get key.data == NULL.
                          * FIXME: we should not get key.data = NULL */
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET
-                                ",%"PRId64":"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64":"
                                 "(null key read for entry from database)",
-                                fd->inode->ino, size, off);
+                                uuid_utoa (fd->inode->gfid), size, off);
                         continue;
                 }/* if(key.data)...else */
 
                 this_entry = CALLOC (1, sizeof (*this_entry));
                 if (this_entry == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
-                                " - %s:"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
                                 "(failed to allocate memory for an entry)",
-                                fd->inode->ino, size, off, strerror (errno));
+                                uuid_utoa (fd->inode->gfid), size, off,
+                                strerror (errno));
                         op_errno = ENOMEM;
                         op_ret   = -1;
                         goto out;
@@ -1278,11 +1276,11 @@ bdb_getdents (call_frame_t *frame,
                 this_entry->name = CALLOC (pri.size + 1, sizeof (char));
                 if (this_entry->name == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
-                                " - %s:"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
                                 "(failed to allocate memory for an "
                                 "entry->name)",
-                                fd->inode->ino, size, off, strerror (errno));
+                                uuid_utoa (fd->inode->gfid), size, off,
+                                strerror (errno));
                         op_errno = ENOMEM;
                         op_ret   = -1;
                         goto out;
@@ -1346,10 +1344,10 @@ dir_read:
                         entry_path = realloc (entry_path, entry_path_len);
                         if (entry_path == NULL) {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "GETDENTS %"PRId64" - %"GF_PRI_SIZET","
+                                        "GETDENTS %s - %"GF_PRI_SIZET","
                                         "%"PRId64" - %s: (failed to allocate "
                                         "memory for an entry_path)",
-                                        fd->inode->ino, size, off,
+                                        uuid_utoa (fd->inode->gfid), size, off,
                                         strerror (errno));
                                 op_errno = ENOMEM;
                                 op_ret   = -1;
@@ -1363,10 +1361,9 @@ dir_read:
                 if (op_ret < 0) {
                         op_errno = errno;
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
-                                " - %s:"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
                                 " (failed to stat on an entry '%s')",
-                                fd->inode->ino, size, off,
+                                uuid_utoa (fd->inode->gfid), size, off,
                                 strerror (errno), entry_path);
                         goto out; /* FIXME: shouldn't we continue here */
                 }
@@ -1379,10 +1376,10 @@ dir_read:
                 this_entry = CALLOC (1, sizeof (*this_entry));
                 if (this_entry == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
-                                " - %s:"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
                                 "(failed to allocate memory for an entry)",
-                                fd->inode->ino, size, off, strerror (errno));
+                                uuid_utoa (fd->inode->gfid), size, off,
+                                strerror (errno));
                         op_errno = ENOMEM;
                         op_ret   = -1;
                         goto out;
@@ -1391,11 +1388,11 @@ dir_read:
                 this_entry->name = strdup (dirent->d_name);
                 if (this_entry->name == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %"PRId64" - %"GF_PRI_SIZET",%"PRId64
-                                " - %s:"
+                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
                                 "(failed to allocate memory for an "
                                 "entry->name)",
-                                fd->inode->ino, size, off, strerror (errno));
+                                uuid_utoa (fd->inode->gfid), size, off,
+                                strerror (errno));
                         op_errno = ENOMEM;
                         op_ret   = -1;
                         goto out;
@@ -1430,10 +1427,10 @@ dir_read:
 
 out:
         gf_log (this->name, GF_LOG_DEBUG,
-                "GETDENTS %"PRId64" - %"GF_PRI_SIZET" (%"PRId32")"
+                "GETDENTS %s - %"GF_PRI_SIZET" (%"PRId32")"
                 "/%"GF_PRI_SIZET",%"PRId64":"
                 "(failed to read the next entry from database)",
-                fd->inode->ino, filled, count, size, off);
+                uuid_utoa (fd->inode->gfid), filled, count, size, off);
 
         STACK_UNWIND (frame, count, op_errno, &entries);
 
@@ -1459,8 +1456,8 @@ bdb_releasedir (xlator_t *this,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RELEASEDIR %"PRId64": EBADFD",
-                        fd->inode->ino);
+                        "RELEASEDIR %s: EBADFD",
+                        uuid_utoa (fd->inode->gfid));
                 op_errno = EBADFD;
                 op_ret   = -1;
                 goto out;
@@ -1470,24 +1467,24 @@ bdb_releasedir (xlator_t *this,
                 free (bfd->path);
         } else {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RELEASEDIR %"PRId64": (bfd->path is NULL)",
-                        fd->inode->ino);
+                        "RELEASEDIR %s: (bfd->path is NULL)",
+                        uuid_utoa (fd->inode->gfid));
         }
 
         if (bfd->dir) {
                 closedir (bfd->dir);
         } else {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RELEASEDIR %"PRId64": (bfd->dir is NULL)",
-                        fd->inode->ino);
+                        "RELEASEDIR %s: (bfd->dir is NULL)",
+                        uuid_utoa (fd->inode->gfid));
         }
 
         if (bfd->ctx) {
                 bctx_unref (bfd->ctx);
         } else {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RELEASEDIR %"PRId64": (bfd->ctx is NULL)",
-                        fd->inode->ino);
+                        "RELEASEDIR %s: (bfd->ctx is NULL)",
+                        uuid_utoa (fd->inode->gfid));
         }
 
         free (bfd);
@@ -1525,8 +1522,8 @@ bdb_readlink (call_frame_t *frame,
         if (op_ret == -1) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READLINK %"PRId64" (%s): %s",
-                        loc->ino, loc->path, strerror (op_errno));
+                        "READLINK %s (%s): %s",
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
         }
 out:
         STACK_UNWIND (frame, op_ret, op_errno, dest);
@@ -1560,8 +1557,8 @@ bdb_mkdir (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKDIR %"PRId64" (%s): %s",
-                        loc->ino, loc->path, strerror (op_errno));
+                        "MKDIR %s (%s): %s",
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -1569,9 +1566,9 @@ bdb_mkdir (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKDIR %"PRId64" (%s): %s "
+                        "MKDIR %s (%s): %s "
                         "(failed to do chmod)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto err;
         }
 
@@ -1579,18 +1576,17 @@ bdb_mkdir (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKDIR %"PRId64" (%s): %s "
+                        "MKDIR %s (%s): %s "
                         "(failed to do lstat)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto err;
         }
 
         bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKDIR %"PRId64" (%s): ENOMEM"
-                        "(no database handle for parent)",
-                        loc->ino, loc->path);
+                        "MKDIR %s (%s): ENOMEM (no database handle for parent)",
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto err;
@@ -1605,9 +1601,9 @@ err:
         ret = rmdir (real_path);
         if (ret < 0) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "MKDIR %"PRId64" (%s): %s"
+                        "MKDIR %s (%s): %s"
                         "(failed to do rmdir)",
-                        loc->ino, loc->path, strerror (errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (errno));
         }
 
 out:
@@ -1641,9 +1637,9 @@ bdb_unlink (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "UNLINK %"PRId64" (%s): ENOMEM"
+                        "UNLINK %s (%s): ENOMEM"
                         "(no database handle for parent)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -1657,9 +1653,9 @@ bdb_unlink (call_frame_t *frame,
                 if (op_ret != 0) {
                         op_errno = errno;
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "UNLINK %"PRId64" (%s): %s"
+                                "UNLINK %s (%s): %s"
                                 "(symlink unlink failed)",
-                                loc->ino, loc->path, strerror (op_errno));
+                                uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                         goto out;
                 }
         } else if (op_ret == 0) {
@@ -1761,15 +1757,15 @@ bdb_rmdir (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = -op_ret;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RMDIR %"PRId64" (%s): %s"
+                        "RMDIR %s (%s): %s"
                         "(internal rmdir routine returned error)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
         } else if (op_ret == 0) {
                 op_ret   = -1;
                 op_errno = ENOTEMPTY;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RMDIR %"PRId64" (%s): ENOTEMPTY",
-                        loc->ino, loc->path);
+                        "RMDIR %s (%s): ENOTEMPTY",
+                        uuid_utoa (loc->gfid), loc->path);
                 goto out;
         }
 
@@ -1777,9 +1773,9 @@ bdb_rmdir (call_frame_t *frame,
         if (op_ret < 0) {
                 op_errno = -op_ret;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "RMDIR %"PRId64" (%s): %s"
+                        "RMDIR %s (%s): %s"
                         "(internal rmdir routine returned error)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -1821,17 +1817,18 @@ bdb_symlink (call_frame_t *frame,
                 if (op_ret != 0) {
                         op_errno = errno;
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "SYMLINK %"PRId64" (%s): %s",
-                                loc->ino, loc->path, strerror (op_errno));
+                                "SYMLINK %s (%s): %s",
+                                uuid_utoa (loc->gfid), loc->path,
+                                strerror (op_errno));
                         goto err;
                 }
 
                 bctx = bctx_parent (B_TABLE(this), loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "SYMLINK %"PRId64" (%s): ENOMEM"
+                                "SYMLINK %s (%s): ENOMEM"
                                 "(no database handle for parent)",
-                                loc->ino, loc->path);
+                                uuid_utoa (loc->gfid), loc->path);
                         op_ret = -1;
                         op_errno = ENOMEM;
                         goto err;
@@ -1849,9 +1846,9 @@ err:
         op_errno = errno;
         if (op_ret != 0) {
                gf_log (this->name, GF_LOG_DEBUG,
-                       "SYMLINK %"PRId64" (%s): %s"
+                       "SYMLINK %s (%s): %s"
                        "(failed to unlink the created symlink)",
-                       loc->ino, loc->path, strerror (op_errno));
+                       uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
         }
         op_ret = -1;
         op_errno = ENOENT;
@@ -1890,9 +1887,9 @@ bdb_chmod (call_frame_t *frame,
                         op_errno = EPERM;
                 } else {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "CHMOD %"PRId64" (%s): %s"
-                                "(lstat failed)",
-                                loc->ino, loc->path, strerror (op_errno));
+                                "CHMOD %s (%s): %s(lstat failed)",
+                                uuid_utoa (loc->gfid), loc->path,
+                                strerror (op_errno));
                 }
                 goto out;
         }
@@ -1932,9 +1929,10 @@ bdb_chown (call_frame_t *frame,
                         op_errno = EPERM;
                 } else {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "CHOWN %"PRId64" (%s): %s"
+                                "CHOWN %s (%s): %s"
                                 "(lstat failed)",
-                                loc->ino, loc->path, strerror (op_errno));
+                                uuid_utoa (loc->gfid), loc->path,
+                                strerror (op_errno));
                 }
                 goto out;
         }
@@ -1970,9 +1968,9 @@ bdb_truncate (call_frame_t *frame,
         bctx = bctx_parent (B_TABLE(this), loc->path);
         if (bctx == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "TRUNCATE %"PRId64" (%s): ENOMEM"
+                        "TRUNCATE %s (%s): ENOMEM"
                         "(no database handle for parent)",
-                        loc->ino, loc->path);
+                        uuid_utoa (loc->gfid), loc->path);
                 op_ret = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -1987,9 +1985,9 @@ bdb_truncate (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "TRUNCATE %"PRId64" (%s): %s"
+                        "TRUNCATE %s (%s): %s"
                         "(lstat on database file failed)",
-                        loc->ino, loc->path, strerror (op_errno));
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -2004,9 +2002,9 @@ bdb_truncate (call_frame_t *frame,
         op_ret = bdb_db_itruncate (bctx, key_string);
         if (op_ret < 0) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "TRUNCATE %"PRId64" (%s): EINVAL"
+                        "TRUNCATE %s (%s): EINVAL"
                         "(truncating entry in  database failed - %s)",
-                        loc->ino, loc->path, db_strerror (op_ret));
+                        uuid_utoa (loc->gfid), loc->path, db_strerror (op_ret));
                 op_errno = EINVAL; /* TODO: better errno */
         }
 
@@ -2047,8 +2045,9 @@ bdb_utimens (call_frame_t *frame,
                         op_errno = EPERM;
                 } else {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "UTIMENS %"PRId64" (%s): %s",
-                                loc->ino, loc->path, strerror (op_errno));
+                                "UTIMENS %s (%s): %s",
+                                uuid_utoa (loc->gfid), loc->path,
+                                strerror (op_errno));
                 }
                 goto out;
         }
@@ -2067,8 +2066,8 @@ bdb_utimens (call_frame_t *frame,
         if (op_ret == -1) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "UTIMENS %"PRId64" (%s): %s",
-                        loc->ino, loc->path, strerror (op_errno));
+                        "UTIMENS %s (%s): %s",
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -2076,8 +2075,8 @@ bdb_utimens (call_frame_t *frame,
         if (op_ret != 0) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "UTIMENS %"PRId64" (%s): %s",
-                        loc->ino, loc->path, strerror (op_errno));
+                        "UTIMENS %s (%s): %s",
+                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
                 goto out;
         }
 
@@ -2166,9 +2165,9 @@ bdb_setxattr (call_frame_t *frame,
                         bctx = bctx_lookup (B_TABLE(this), loc->path);
                         if (bctx == NULL) {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETXATTR %"PRId64" (%s) - %s: ENOMEM"
+                                        "SETXATTR %s (%s) - %s: ENOMEM"
                                         "(no database handle for directory)",
-                                        loc->ino, loc->path, key);
+                                        uuid_utoa (loc->gfid), loc->path, key);
                                 op_ret = -1;
                                 op_errno = ENOMEM;
                                 goto out;
@@ -2179,10 +2178,11 @@ bdb_setxattr (call_frame_t *frame,
                                 if (op_ret == -1) {
                                         /* key doesn't exist in database */
                                         gf_log (this->name, GF_LOG_DEBUG,
-                                                "SETXATTR %"PRId64" (%s) - %s:"
+                                                "SETXATTR %s (%s) - %s:"
                                                 " (entry not present in "
                                                 "database)",
-                                                loc->ino, loc->path, key);
+                                                uuid_utoa (loc->gfid),
+                                                loc->path, key);
                                         op_ret = -1;
                                         op_errno = ENOATTR;
                                         break;
@@ -2227,16 +2227,16 @@ bdb_setxattr (call_frame_t *frame,
                                 ;
                         } else if (BDB_TIMED_LOG (op_errno, gf_bdb_xattr_log)) {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETXATTR %"PRId64" (%s) - %s: %s",
-                                        loc->ino, loc->path, trav->key,
-                                        strerror (op_errno));
+                                        "SETXATTR %s (%s) - %s: %s",
+                                        uuid_utoa (loc->gfid), loc->path,
+                                        trav->key, strerror (op_errno));
                                 /* do not continue, break out */
                                 break;
                         } else {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETXATTR %"PRId64" (%s) - %s: %s",
-                                        loc->ino, loc->path, trav->key,
-                                        strerror (op_errno));
+                                        "SETXATTR %s (%s) - %s: %s",
+                                        uuid_utoa (loc->gfid), loc->path,
+                                        trav->key, strerror (op_errno));
                         }
                 } /* if(ZR_FILE_CONTENT_REQUEST())...else */
                 trav = trav->next;
@@ -2291,9 +2291,9 @@ bdb_getxattr (call_frame_t *frame,
 
         if (!S_ISDIR (loc->inode->st_mode)) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "GETXATTR %"PRId64" (%s) - %s: ENOATTR "
+                        "GETXATTR %s (%s) - %s: ENOATTR "
                         "(not a directory)",
-                        loc->ino, loc->path, name);
+                        uuid_utoa (loc->gfid), loc->path, name);
                 op_ret = -1;
                 op_errno = ENOATTR;
                 goto out;
@@ -2303,9 +2303,9 @@ bdb_getxattr (call_frame_t *frame,
                 bctx = bctx_lookup (B_TABLE(this), loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: ENOMEM"
+                                "GETXATTR %s (%s) - %s: ENOMEM"
                                 "(no database handle for directory)",
-                                loc->ino, loc->path, name);
+                                uuid_utoa (loc->gfid), loc->path, name);
                         op_ret = -1;
                         op_errno = ENOMEM;
                         goto out;
@@ -2316,9 +2316,9 @@ bdb_getxattr (call_frame_t *frame,
                 op_ret = bdb_db_iread (bctx, key_string, &buf);
                 if (op_ret == -1) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: ENOATTR"
+                                "GETXATTR %s (%s) - %s: ENOATTR"
                                 "(attribute not present in database)",
-                                loc->ino, loc->path, name);
+                                uuid_utoa (loc->gfid), loc->path, name);
                         op_errno = ENOATTR;
                         goto out;
                 }
@@ -2326,10 +2326,10 @@ bdb_getxattr (call_frame_t *frame,
                 op_ret = dict_set_dynptr (dict, (char *)name, buf, op_ret);
                 if (op_ret < 0) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: ENOATTR"
+                                "GETXATTR %s (%s) - %s: ENOATTR"
                                 "(attribute present in database, "
                                 "dict set failed)",
-                                loc->ino, loc->path, name);
+                                uuid_utoa (loc->gfid), loc->path, name);
                         op_errno = ENODATA;
                 }
 
@@ -2342,12 +2342,14 @@ bdb_getxattr (call_frame_t *frame,
         if (size < 0) {
                 if (BDB_TIMED_LOG (op_errno, gf_bdb_xattr_log)) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: %s",
-                                loc->ino, loc->path, name, strerror (op_errno));
+                                "GETXATTR %s (%s) - %s: %s",
+                                uuid_utoa (loc->gfid), loc->path, name,
+                                strerror (op_errno));
                 } else {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: %s",
-                                loc->ino, loc->path, name, strerror (op_errno));
+                                "GETXATTR %s (%s) - %s: %s",
+                                uuid_utoa (loc->gfid), loc->path, name,
+                                strerror (op_errno));
                 }
                 op_ret = -1;
                 op_errno = ENOATTR;
@@ -2363,8 +2365,9 @@ bdb_getxattr (call_frame_t *frame,
                 op_ret   = -1;
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "GETXATTR %"PRId64" (%s) - %s: %s",
-                        loc->ino, loc->path, name, strerror (op_errno));
+                        "GETXATTR %s (%s) - %s: %s",
+                        uuid_utoa (loc->gfid), loc->path, name,
+                        strerror (op_errno));
         }
 
         size = sys_llistxattr (real_path, list, size);
@@ -2372,8 +2375,9 @@ bdb_getxattr (call_frame_t *frame,
         if (op_ret == -1) {
                 op_errno = errno;
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "GETXATTR %"PRId64" (%s) - %s: %s",
-                        loc->ino, loc->path, name, strerror (op_errno));
+                        "GETXATTR %s (%s) - %s: %s",
+                        uuid_utoa (loc->gfid), loc->path, name,
+                        strerror (op_errno));
                 goto out;
         }
 
@@ -2402,9 +2406,8 @@ bdb_getxattr (call_frame_t *frame,
                 if (op_ret < 0) {
                         FREE (value);
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "GETXATTR %"PRId64" (%s) - %s: "
-                                "(skipping key %s)",
-                                loc->ino, loc->path, name, key);
+                                "GETXATTR %s (%s) - %s: (skipping key %s)",
+                                uuid_utoa (loc->gfid), loc->path, name, key);
                         continue;
                 }
                 remaining_size -= strlen (key) + 1;
@@ -2445,9 +2448,9 @@ bdb_removexattr (call_frame_t *frame,
 
         if (!S_ISDIR(loc->inode->st_mode)) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "REMOVEXATTR %"PRId64" (%s) - %s: ENOATTR "
+                        "REMOVEXATTR %s (%s) - %s: ENOATTR "
                         "(not a directory)",
-                        loc->ino, loc->path, name);
+                        uuid_utoa (loc->gfid), loc->path, name);
                 op_ret = -1;
                 op_errno = ENOATTR;
                 goto out;
@@ -2457,9 +2460,9 @@ bdb_removexattr (call_frame_t *frame,
                 bctx = bctx_lookup (B_TABLE(this), loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "REMOVEXATTR %"PRId64" (%s) - %s: ENOATTR"
+                                "REMOVEXATTR %s (%s) - %s: ENOATTR"
                                 "(no database handle for directory)",
-                                loc->ino, loc->path, name);
+                                uuid_utoa (loc->gfid), loc->path, name);
                         op_ret = -1;
                         op_errno = ENOATTR;
                         goto out;
@@ -2468,9 +2471,9 @@ bdb_removexattr (call_frame_t *frame,
                 op_ret = bdb_db_iremove (bctx, name);
                 if (op_ret == -1) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "REMOVEXATTR %"PRId64" (%s) - %s: ENOATTR"
+                                "REMOVEXATTR %s (%s) - %s: ENOATTR"
                                 "(no such attribute in database)",
-                                loc->ino, loc->path, name);
+                                uuid_utoa (loc->gfid), loc->path, name);
                         op_errno = ENOATTR;
                 }
                 goto out;
@@ -2482,12 +2485,14 @@ bdb_removexattr (call_frame_t *frame,
         if (op_ret == -1) {
                 if (BDB_TIMED_LOG (op_errno, gf_bdb_xattr_log)) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "REMOVEXATTR %"PRId64" (%s) - %s: %s",
-                                loc->ino, loc->path, name, strerror (op_errno));
+                                "REMOVEXATTR %s (%s) - %s: %s",
+                                uuid_utoa (loc->gfid), loc->path, name,
+                                strerror (op_errno));
                 } else {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "REMOVEXATTR %"PRId64" (%s) - %s: %s",
-                                loc->ino, loc->path, name, strerror (op_errno));
+                                "REMOVEXATTR %s (%s) - %s: %s",
+                                uuid_utoa (loc->gfid), loc->path, name,
+                                strerror (op_errno));
                 }
         } /* if(op_ret == -1) */
 out:
@@ -2519,9 +2524,9 @@ bdb_fsyncdir (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "FSYNCDIR %"PRId64": EBADFD"
+                        "FSYNCDIR %s: EBADFD"
                         "(failed to find internal context from fd)",
-                        fd->inode->ino);
+                        uuid_utoa (fd->inode->gfid));
                 op_errno = EBADFD;
                 op_ret   = -1;
         }
@@ -2646,8 +2651,8 @@ bdb_setdents (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "SETDENTS %"PRId64": EBADFD",
-                        fd->inode->ino);
+                        "SETDENTS %s: EBADFD",
+                        uuid_utoa (fd->inode->gfid));
                 op_errno = EBADFD;
                 op_ret   = -1;
                 goto out;
@@ -2677,9 +2682,9 @@ bdb_setdents (call_frame_t *frame,
                                 op_errno = errno;
                                 op_ret   = ret;
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %"PRId64" - %s: %s "
+                                        "SETDENTS %s - %s: %s "
                                         "(mkdir failed)",
-                                        fd->inode->ino, pathname,
+                                        uuid_utoa (fd->inode->gfid), pathname,
                                         strerror (op_errno));
                                 goto loop;
                         }
@@ -2693,9 +2698,8 @@ bdb_setdents (call_frame_t *frame,
                                 op_ret   = -1;
                                 op_errno = errno;
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %"PRId64" - %s: %s "
-                                        "(chmod failed)",
-                                        fd->inode->ino, pathname,
+                                        "SETDENTS %s - %s: %s (chmod failed)",
+                                        uuid_utoa (fd->inode->gfid), pathname,
                                         strerror (op_errno));
                                 goto loop;
                         }
@@ -2706,9 +2710,8 @@ bdb_setdents (call_frame_t *frame,
                                 op_ret   = -1;
                                 op_errno = errno;
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %"PRId64" - %s: %s "
-                                        "(chown failed)",
-                                        fd->inode->ino, pathname,
+                                        "SETDENTS %s - %s: %s (chown failed)",
+                                        uuid_utoa (fd->inode->gfid), pathname,
                                         strerror (op_errno));
                                 goto loop;
                         }
@@ -2720,10 +2723,10 @@ bdb_setdents (call_frame_t *frame,
                                                          trav->name);
                                 if (op_ret < 0) {
                                         gf_log (this->name, GF_LOG_DEBUG,
-                                                "SETDENTS %"PRId64" (%s) - %s: "
+                                                "SETDENTS %s (%s) - %s: "
                                                 "%s (database entry creation"
                                                 " failed)",
-                                                fd->inode->ino,
+                                                uuid_utoa (fd->inode->gfid),
                                                 bfd->ctx->directory, trav->name,
                                                 strerror (op_errno));
                                 }
@@ -2731,9 +2734,9 @@ bdb_setdents (call_frame_t *frame,
                                 /* TODO: impelement */;
                         } else {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %"PRId64" (%s) - %s mode=%o: "
+                                        "SETDENTS %s (%s) - %s mode=%o: "
                                         "(unsupported file type)",
-                                        fd->inode->ino,
+                                        uuid_utoa (fd->inode->gfid),
                                         bfd->ctx->directory, trav->name,
                                         trav->buf.st_mode);
                         } /* if(S_ISREG())...else */
@@ -2751,16 +2754,13 @@ out:
 }
 
 int32_t
-bdb_fstat (call_frame_t *frame,
-           xlator_t *this,
-           fd_t *fd)
+bdb_fstat (call_frame_t *frame, xlator_t *this,
+           fd_t *fd, dict_t *xdata)
 {
         int32_t        op_ret   = -1;
         int32_t        op_errno = EINVAL;
-        struct stat    stbuf    = {0,};
-        struct bdb_fd *bfd      = NULL;
-        bctx_t        *bctx     = NULL;
-        char          *db_path  = NULL;
+        struct iatt    buf      = {0, };
+        struct bdb_fd  *bfd      = NULL;
 
         GF_VALIDATE_OR_GOTO ("bdb", frame, out);
         GF_VALIDATE_OR_GOTO ("bdb", this, out);
@@ -2768,34 +2768,23 @@ bdb_fstat (call_frame_t *frame,
 
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "FSTAT %"PRId64": EBADFD "
-                        "(failed to find internal context in fd)",
-                        fd->inode->ino);
+                gf_log (this->name, GF_LOG_WARNING,
+                        "bfd is NULL, fd=%p", fd);
                 op_errno = EBADFD;
                 op_ret   = -1;
                 goto out;
         }
 
-        bctx = bfd->ctx;
-
-        MAKE_REAL_PATH_TO_STORAGE_DB (db_path, this, bctx->directory);
-        op_ret = lstat (db_path, &stbuf);
-        op_errno = errno;
+        op_ret = bdb_fdstat(this, bfd, &buf);
         if (op_ret != 0) {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "FSTAT %"PRId64": %s"
-                        "(failed to stat database file %s)",
-                        fd->inode->ino, strerror (op_errno), db_path);
+                op_errno = errno;
+                gf_log (this->name, GF_LOG_ERROR, "fstat failed on fd=%p: %s",
+                        fd, strerror (op_errno));
                 goto out;
         }
 
-        stbuf.st_ino = fd->inode->ino;
-        stbuf.st_size = bdb_db_fread (bfd, NULL, 0, 0);
-        stbuf.st_blocks = BDB_COUNT_BLOCKS (stbuf.st_size, stbuf.st_blksize);
-
 out:
-        STACK_UNWIND (frame, op_ret, op_errno, &stbuf);
+        STACK_UNWIND_STRICT (fstat, frame, op_ret, op_errno, &buf, NULL);
         return 0;
 }
 
@@ -2843,9 +2832,9 @@ bdb_readdir (call_frame_t *frame,
         BDB_FCTX_GET (fd, this, &bfd);
         if (bfd == NULL) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READDIR %"PRId64" - %"GF_PRI_SIZET",%"PRId64": EBADFD "
+                        "READDIR %s - %"GF_PRI_SIZET",%"PRId64": EBADFD "
                         "(failed to find internal context in fd)",
-                        fd->inode->ino, size, off);
+                        uuid_utoa (fd->inode->gfid), size, off);
                 op_errno = EBADFD;
                 op_ret   = -1;
                 goto out;
@@ -2854,9 +2843,9 @@ bdb_readdir (call_frame_t *frame,
         op_ret = bdb_cursor_open (bfd->ctx, &cursorp);
         if (op_ret < 0) {
                 gf_log (this->name, GF_LOG_DEBUG,
-                        "READDIR %"PRId64" - %"GF_PRI_SIZET",%"PRId64": EBADFD "
+                        "READDIR %s - %"GF_PRI_SIZET",%"PRId64": EBADFD "
                         "(failed to open cursor to database handle)",
-                        fd->inode->ino, size, off);
+                        uuid_utoa (fd->inode->gfid), size, off);
                 op_errno = EBADFD;
                 goto out;
         }
@@ -2896,9 +2885,9 @@ bdb_readdir (call_frame_t *frame,
                         break;
                 } else if (op_ret < 0) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "READDIR %"PRId64" - %"GF_PRI_SIZET",%"PRId64":"
+                                "READDIR %s - %"GF_PRI_SIZET",%"PRId64":"
                                 "(failed to read the next entry from database)",
-                                fd->inode->ino, size, off);
+                                uuid_utoa (fd->inode->gfid), size, off);
                         op_errno = ENOENT;
                         break;
                 } /* if (op_ret == DB_NOTFOUND)...else if...else */
@@ -2907,9 +2896,9 @@ bdb_readdir (call_frame_t *frame,
                         /* NOTE: currently ignore when we get key.data == NULL.
                          * TODO: we should not get key.data = NULL */
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "READDIR %"PRId64" - %"GF_PRI_SIZET",%"PRId64":"
+                                "READDIR %s - %"GF_PRI_SIZET",%"PRId64":"
                                 "(null key read for entry from database)",
-                                fd->inode->ino, size, off);
+                                uuid_utoa (fd->inode->gfid), size, off);
                         continue;
                 }/* if(key.data)...else */
                 count++;
@@ -2992,10 +2981,10 @@ dir_read:
 
 out:
         gf_log (this->name, GF_LOG_DEBUG,
-                "READDIR %"PRId64" - %"GF_PRI_SIZET" (%"PRId32")"
+                "READDIR %s - %"GF_PRI_SIZET" (%"PRId32")"
                 "/%"GF_PRI_SIZET",%"PRId64":"
                 "(failed to read the next entry from database)",
-                fd->inode->ino, filled, count, size, off);
+                uuid_utoa (fd->inode->gfid), filled, count, size, off);
 
         STACK_UNWIND (frame, count, op_errno, &entries);
 
@@ -3108,9 +3097,9 @@ bdb_checksum (call_frame_t *frame,
                 bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
                 if (bctx == NULL) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "CHECKSUM %"PRId64" (%s): ENOMEM"
+                                "CHECKSUM %s (%s): ENOMEM"
                                 "(failed to lookup database handle)",
-                                loc->inode->ino, loc->path);
+                                uuid_utoa(loc->inode->gfid), loc->path);
                         op_ret   = -1;
                         op_errno = ENOMEM;
                         goto out;
@@ -3119,9 +3108,9 @@ bdb_checksum (call_frame_t *frame,
                 op_ret = bdb_cursor_open (bctx, &cursorp);
                 if (op_ret < 0) {
                         gf_log (this->name, GF_LOG_DEBUG,
-                                "CHECKSUM %"PRId64" (%s): EBADFD"
+                                "CHECKSUM %s (%s): EBADFD"
                                 "(failed to open cursor to database handle)",
-                                loc->inode->ino, loc->path);
+                                uuid_utoa (loc->inode->gfid), loc->path);
                         op_ret   = -1;
                         op_errno = EBADFD;
                         goto out;
@@ -3151,8 +3140,8 @@ bdb_checksum (call_frame_t *frame,
                                 FREE (key.data);
                         } else {
                                 gf_log (this->name, GF_LOG_DEBUG,
-                                        "CHECKSUM %"PRId64" (%s)",
-                                        loc->inode->ino, loc->path);
+                                        "CHECKSUM %s (%s)",
+                                        uuid_utoa(loc->inode->gfid), loc->path);
                                 op_ret = -1;
                                 op_errno = ENOENT; /* TODO: watch errno */
                                 no_break = 0;

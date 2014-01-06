@@ -129,6 +129,13 @@
                 key = basename (tmp);                   \
         }while (0);
 
+#define MAKE_UUID_KEY_FROM_PATH(key, path) do {                         \
+                char *tmp = alloca (strlen (path) + sizeof ("_uuid"));  \
+                strcpy (tmp, path);                                     \
+                strcat (tmp, "_uuid");                                  \
+                key = basename (tmp);                                   \
+        }while (0);
+
 /* IS_BDB_PRIVATE_FILE(name)
  * check if a given 'name' is bdb xlator's internal file name
  *
@@ -522,5 +529,9 @@ bctx_unref (bctx_t *ctx);
 
 bctx_t *
 bctx_ref (bctx_t *ctx);
+
+/* bdb-helpers.c */
+int
+bdb_fdstat (xlator_t *this, struct bdb_fd *bfd, struct iatt *stbuf_p);
 
 #endif /* _BDB_H */

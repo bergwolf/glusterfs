@@ -4,7 +4,7 @@ xlatordir = $(libdir)/glusterfs/$(PACKAGE_VERSION)/xlator/storage
 
 bdb_la_LDFLAGS = -module -avoidversion
 
-bdb_la_SOURCES = bctx.c bdb-ll.c bdb.c
+bdb_la_SOURCES = bctx.c bdb-ll.c bdb.c bdb-helpers.c
 bdb_la_LIBADD = $(top_builddir)/libglusterfs/src/libglusterfs.la 
 
 noinst_HEADERS = bdb.h 
