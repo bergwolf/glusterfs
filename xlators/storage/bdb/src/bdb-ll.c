@@ -878,6 +878,7 @@ out:
         return ret;
 }/* bdb_cursor_get */
 
+#define ALIGN(x) (((x) + sizeof (uint64_t) - 1) & ~(sizeof (uint64_t) - 1))
 int32_t
 bdb_dirent_size (DBT *key)
 {
