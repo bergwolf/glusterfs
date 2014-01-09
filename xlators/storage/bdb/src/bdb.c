@@ -183,6 +183,9 @@ is_dir_empty (xlator_t *this,
                 case DB_QUEUE:
                         ret = (((DB_QUEUE_STAT *)dbstat)->qs_nkeys == 0);
                         break;
+                case DB_HEAP:
+                        ret = (((DB_HEAP_STAT *)dbstat)->heap_nrecs == 0);
+                        break;
                 case DB_UNKNOWN:
                         gf_log (this->name, GF_LOG_CRITICAL,
                                 "unknown access-mode set for database");
