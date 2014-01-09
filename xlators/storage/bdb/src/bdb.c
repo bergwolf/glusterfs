@@ -61,19 +61,17 @@
 #define B_TABLE(this) (((struct bdb_private *)this->private)->b_table)
 
 
-int32_t
-bdb_mknod (call_frame_t *frame,
-           xlator_t *this,
-           loc_t *loc,
-           mode_t mode,
-           dev_t dev)
+int
+bdb_mknod (call_frame_t *frame, xlator_t *this, loc_t *loc,
+           mode_t mode, dev_t dev, mode_t umask, dict_t *xdata)
 {
         int32_t     op_ret     = -1;
         int32_t     op_errno   = EINVAL;
-        char       *key_string = NULL; /* after translating path to DB key */
-        char       *db_path    = NULL;
-        bctx_t     *bctx       = NULL;
-        struct stat stbuf      = {0,};
+        char        *key_string = NULL; /* after translating path to DB key */
+        char        *db_path    = NULL;
+        bctx_t      *bctx       = NULL;
+        struct iatt ibuf        = {0,};
+        struct stat stbuf;
 
 
         GF_VALIDATE_OR_GOTO ("bdb", frame, out);
@@ -85,7 +83,7 @@ bdb_mknod (call_frame_t *frame,
                         "MKNOD %s/%s (%s): EPERM"
                         "(mknod supported only for regular files. "
                         "file mode '%o' not supported)",
-                        uuid_utoa (loc->parent->gfid), loc->name, loc->path, mode);
+                        uuid_utoa (loc->pargfid), loc->name, loc->path, mode);
                 op_ret = -1;
                 op_errno = EPERM;
                 goto out;
@@ -96,7 +94,7 @@ bdb_mknod (call_frame_t *frame,
                 gf_log (this->name, GF_LOG_DEBUG,
                         "MKNOD %s/%s (%s): ENOMEM"
                         "(failed to lookup database handle)",
-                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
+                        uuid_utoa (loc->pargfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = ENOMEM;
                 goto out;
@@ -110,26 +108,31 @@ bdb_mknod (call_frame_t *frame,
                 gf_log (this->name, GF_LOG_DEBUG,
                         "MKNOD %s/%s (%s): EINVAL"
                         "(failed to lookup database handle)",
-                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
+                        uuid_utoa (loc->pargfid), loc->name, loc->path);
                 goto out;
         }
 
         MAKE_KEY_FROM_PATH (key_string, loc->path);
         op_ret = bdb_db_icreate (bctx, key_string);
         if (op_ret > 0) {
+                op_ret = bdb_set_gfid (this, loc, bctx, key_string, xdata,
+                                       ibuf.ia_gfid);
+                if (op_ret < 0) {
+                        op_errno = errno;
+                        gf_log(this->name, GF_LOG_DEBUG,
+                               "bdb_set_gfid failed: %d", op_errno);
+                        goto out;
+                }
                 /* create successful */
-                stbuf.st_ino = bdb_inode_transform (loc->parent->ino,
-                                                    key_string,
-                                                    strlen (key_string));
-                stbuf.st_mode  = mode;
-                stbuf.st_size = 0;
-                stbuf.st_blocks = BDB_COUNT_BLOCKS (stbuf.st_size, \
-                                                    stbuf.st_blksize);
+                iatt_from_stat (&ibuf, &stbuf);
+                ibuf.ia_size = 0;
+                ibuf.ia_blocks = BDB_COUNT_BLOCKS (stbuf.st_size, stbuf.st_blksize);
+                bdb_fill_ino_from_gfid (this, &ibuf);
         } else {
                 gf_log (this->name, GF_LOG_DEBUG,
                         "MKNOD %s/%s (%s): ENOMEM"
                         "(failed to create database entry)",
-                        uuid_utoa (loc->parent->gfid), loc->name, loc->path);
+                        uuid_utoa (loc->pargfid), loc->name, loc->path);
                 op_ret   = -1;
                 op_errno = EINVAL; /* TODO: errno sari illa */
                 goto out;
@@ -142,7 +145,7 @@ out:
                 bctx_unref (bctx);
         }
 
-        STACK_UNWIND (frame, op_ret, op_errno, loc->inode, &stbuf);
+        STACK_UNWIND (frame, op_ret, op_errno, (loc)?loc->inode:NULL, &ibuf);
         return 0;
 }
 

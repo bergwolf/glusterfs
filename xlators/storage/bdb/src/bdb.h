@@ -533,5 +533,10 @@ bctx_ref (bctx_t *ctx);
 /* bdb-helpers.c */
 int
 bdb_fdstat (xlator_t *this, struct bdb_fd *bfd, struct iatt *stbuf_p);
+int
+bdb_set_gfid (xlator_t *this, loc_t *loc, const bctx_t *ctx,
+              const char *key, dict_t *xattr_req, uuid_t uuid_req);
+void
+bdb_fill_ino_from_gfid (xlator_t *this, struct iatt *buf);
 
 #endif /* _BDB_H */
