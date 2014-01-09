@@ -284,6 +284,7 @@ bdb_create (call_frame_t *frame,
         int32_t             op_errno   = EPERM;
         char               *db_path    = NULL;
         struct stat         stbuf      = {0,};
+        struct iatt         ibuf       = {0,};
         bctx_t             *bctx       = NULL;
         struct bdb_private *private    = NULL;
         char               *key_string = NULL;
@@ -329,6 +330,22 @@ bdb_create (call_frame_t *frame,
                 goto out;
         }
 
+        op_ret = bdb_set_gfid (this, loc, bctx, key_string, xdata,
+                               ibuf.ia_gfid);
+        if (op_ret < 0) {
+                op_errno = errno;
+                gf_log(this->name, GF_LOG_DEBUG,
+                       "bdb_set_gfid failed: %d", op_errno);
+                goto out;
+        }
+        /* create successful */
+        stbuf.st_mode = private->file_mode;
+        stbuf.st_size = 0;
+        stbuf.st_nlink = 1;
+        stbuf.st_blocks = BDB_COUNT_BLOCKS (stbuf.st_size, stbuf.st_blksize);
+        iatt_from_stat (&ibuf, &stbuf);
+        bdb_fill_ino_from_gfid (this, &ibuf);
+
         /* create successful */
         bfd = CALLOC (1, sizeof (*bfd));
         if (bfd == NULL) {
@@ -356,17 +373,10 @@ bdb_create (call_frame_t *frame,
 
         BDB_FCTX_SET (fd, this, bfd);
 
-        stbuf.st_ino = bdb_inode_transform (loc->parent->ino,
-                                            key_string,
-                                            strlen (key_string));
-        stbuf.st_mode = private->file_mode;
-        stbuf.st_size = 0;
-        stbuf.st_nlink = 1;
-        stbuf.st_blocks = BDB_COUNT_BLOCKS (stbuf.st_size, stbuf.st_blksize);
         op_ret = 0;
         op_errno = 0;
 out:
-        STACK_UNWIND (frame, op_ret, op_errno, fd, loc->inode, &stbuf);
+        STACK_UNWIND (frame, op_ret, op_errno, fd, loc->inode, &ibuf);
 
         return 0;
 }
