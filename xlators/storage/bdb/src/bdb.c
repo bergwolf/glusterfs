@@ -225,7 +225,8 @@ int32_t
 bdb_rename (call_frame_t *frame,
             xlator_t *this,
             loc_t *oldloc,
-            loc_t *newloc)
+            loc_t *newloc,
+            dict_t *xdata)
 {
         STACK_UNWIND (frame, -1, EXDEV, NULL);
         return 0;
@@ -235,7 +236,8 @@ int32_t
 bdb_link (call_frame_t *frame,
           xlator_t *this,
           loc_t *oldloc,
-          loc_t *newloc)
+          loc_t *newloc,
+          dict_t *xdata)
 {
         STACK_UNWIND (frame, -1, EXDEV, NULL, NULL);
         return 0;
@@ -274,7 +276,9 @@ bdb_create (call_frame_t *frame,
             loc_t *loc,
             int32_t flags,
             mode_t mode,
-            fd_t *fd)
+            mode_t umask,
+            fd_t *fd,
+            dict_t *xdata)
 {
         int32_t             op_ret     = -1;
         int32_t             op_errno   = EPERM;
@@ -380,7 +384,8 @@ bdb_open (call_frame_t *frame,
           xlator_t *this,
           loc_t *loc,
           int32_t flags,
-          fd_t *fd)
+          fd_t *fd,
+          dict_t *xdata)
 {
         int32_t         op_ret     = -1;
         int32_t         op_errno   = EINVAL;
@@ -443,7 +448,9 @@ bdb_readv (call_frame_t *frame,
            xlator_t *this,
            fd_t *fd,
            size_t size,
-           off_t offset)
+           off_t offset,
+           uint32_t flags,
+           dict_t *xdata)
 {
         int32_t        op_ret     = -1;
         int32_t        op_errno   = EINVAL;
@@ -540,7 +547,6 @@ out:
         return 0;
 }
 
-
 int32_t
 bdb_writev (call_frame_t *frame,
             xlator_t *this,
@@ -548,7 +554,9 @@ bdb_writev (call_frame_t *frame,
             struct iovec *vector,
             int32_t count,
             off_t offset,
-            struct iobref *iobref)
+            uint32_t flags,
+            struct iobref *iobref,
+            dict_t *xdata)
 {
         int32_t        op_ret   = -1;
         int32_t        op_errno = EINVAL;
@@ -638,7 +646,8 @@ out:
 int32_t
 bdb_flush (call_frame_t *frame,
            xlator_t *this,
-           fd_t *fd)
+           fd_t *fd,
+           dict_t *xdata)
 {
         int32_t        op_ret   = -1;
         int32_t        op_errno = EPERM;
@@ -705,7 +714,8 @@ int32_t
 bdb_fsync (call_frame_t *frame,
            xlator_t *this,
            fd_t *fd,
-           int32_t datasync)
+           int32_t datasync,
+           dict_t *xdata)
 {
         STACK_UNWIND (frame, 0, 0);
         return 0;
@@ -718,7 +728,8 @@ bdb_lk (call_frame_t *frame,
         xlator_t *this,
         fd_t *fd,
         int32_t cmd,
-        struct flock *lock)
+        struct gf_flock *lock,
+        dict_t *xdata)
 {
         struct flock nullock = {0, };
 
@@ -988,7 +999,8 @@ out:
 int32_t
 bdb_stat (call_frame_t *frame,
           xlator_t *this,
-          loc_t *loc)
+          loc_t *loc,
+          dict_t *xdata)
 {
 
         struct stat stbuf           = {0,};
@@ -1081,7 +1093,8 @@ int32_t
 bdb_opendir (call_frame_t *frame,
              xlator_t *this,
              loc_t *loc,
-             fd_t *fd)
+             fd_t *fd,
+             dict_t *xdata)
 {
         char           *real_path = NULL;
         int32_t         op_ret    = -1;
@@ -1161,297 +1174,6 @@ err:
 }/* bdb_opendir */
 
 int32_t
-bdb_getdents (call_frame_t *frame,
-              xlator_t     *this,
-              fd_t         *fd,
-              size_t        size,
-              off_t         off,
-              int32_t       flag)
-{
-        struct bdb_dir *bfd        = NULL;
-        int32_t         op_ret     = -1;
-        int32_t         op_errno   = EINVAL;
-        size_t          filled     = 0;
-        dir_entry_t     entries    = {0, };
-        dir_entry_t    *this_entry = NULL;
-        char           *entry_path     = NULL;
-        struct dirent  *dirent         = NULL;
-        off_t           in_case    = 0;
-        int32_t         this_size  = 0;
-        DBC            *cursorp    = NULL;
-        int32_t         ret            = -1;
-        int32_t         real_path_len  = 0;
-        int32_t         entry_path_len = 0;
-        int32_t         count          = 0;
-        off_t   offset = 0;
-        size_t          tmp_name_len   = 0;
-        struct stat     db_stbuf       = {0,};
-        struct stat     buf            = {0,};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, fd, out);
-
-        BDB_FCTX_GET (fd, this, &bfd);
-        if (bfd == NULL) {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64
-                        " %o: EBADFD "
-                        "(failed to find internal context in fd)",
-                        uuid_utoa (fd->inode->gfid), size, off, flag);
-                op_errno = EBADFD;
-                op_ret   = -1;
-                goto out;
-        }
-
-        op_ret = bdb_cursor_open (bfd->ctx, &cursorp);
-        if (op_ret < 0) {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64
-                        ": EBADFD "
-                        "(failed to open cursor to database handle)",
-                        uuid_utoa (fd->inode->gfid), size, off);
-                op_errno = EBADFD;
-                goto out;
-        }
-
-        if (off) {
-                DBT sec = {0,}, pri = {0,}, val = {0,};
-                sec.data = &(off);
-                sec.size = sizeof (off);
-                sec.flags = DB_DBT_USERMEM;
-                val.dlen = 0;
-                val.doff = 0;
-                val.flags = DB_DBT_PARTIAL;
-
-                op_ret = bdb_cursor_get (cursorp, &sec, &pri, &val, DB_SET);
-                if (op_ret == DB_NOTFOUND) {
-                        offset = off;
-                        goto dir_read;
-                }
-        }
-
-        while (filled <= size) {
-                DBT sec = {0,}, pri = {0,}, val = {0,};
-
-                this_entry = NULL;
-
-                sec.flags = DB_DBT_MALLOC;
-                pri.flags = DB_DBT_MALLOC;
-                val.dlen = 0;
-                val.doff = 0;
-                val.flags = DB_DBT_PARTIAL;
-                op_ret = bdb_cursor_get (cursorp, &sec, &pri, &val, DB_NEXT);
-
-                if (op_ret == DB_NOTFOUND) {
-                        /* we reached end of the directory */
-                        op_ret = 0;
-                        op_errno = 0;
-                        break;
-                } else if (op_ret < 0) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64":"
-                                "(failed to read the next entry from database)",
-                                uuid_utoa (fd->inode->gfid), size, off);
-                        op_errno = ENOENT;
-                        break;
-                } /* if (op_ret == DB_NOTFOUND)...else if...else */
-
-                if (pri.data == NULL) {
-                        /* NOTE: currently ignore when we get key.data == NULL.
-                         * FIXME: we should not get key.data = NULL */
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64":"
-                                "(null key read for entry from database)",
-                                uuid_utoa (fd->inode->gfid), size, off);
-                        continue;
-                }/* if(key.data)...else */
-
-                this_entry = CALLOC (1, sizeof (*this_entry));
-                if (this_entry == NULL) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
-                                "(failed to allocate memory for an entry)",
-                                uuid_utoa (fd->inode->gfid), size, off,
-                                strerror (errno));
-                        op_errno = ENOMEM;
-                        op_ret   = -1;
-                        goto out;
-                }
-
-                this_entry->name = CALLOC (pri.size + 1, sizeof (char));
-                if (this_entry->name == NULL) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
-                                "(failed to allocate memory for an "
-                                "entry->name)",
-                                uuid_utoa (fd->inode->gfid), size, off,
-                                strerror (errno));
-                        op_errno = ENOMEM;
-                        op_ret   = -1;
-                        goto out;
-                }
-
-                memcpy (this_entry->name, pri.data, pri.size);
-                this_entry->buf = db_stbuf;
-                this_entry->buf.st_size = bdb_db_iread (bfd->ctx,
-                                                        this_entry->name, NULL);
-                this_entry->buf.st_blocks = BDB_COUNT_BLOCKS (
-                        this_entry->buf.st_size,
-                        this_entry->buf.st_blksize);
-
-                this_entry->buf.st_ino = bdb_inode_transform (fd->inode->ino,
-                                                              pri.data,
-                                                              pri.size);
-                count++;
-
-                this_entry->next = entries.next;
-                this_entry->link = "";
-                entries.next = this_entry;
-                /* if size is 0, count can never be = size,
-                 * so entire dir is read */
-                if (sec.data)
-                        FREE (sec.data);
-
-                if (pri.data)
-                        FREE (pri.data);
-
-                if (count == size)
-                        break;
-        }/* while */
-        bdb_cursor_close (bfd->ctx, cursorp);
-        op_ret = count;
-        op_errno = 0;
-        if (count >= size)
-                goto out;
-dir_read:
-        /* hungry kyaa? */
-        if (!offset) {
-                rewinddir (bfd->dir);
-        } else {
-                seekdir (bfd->dir, offset);
-        }
-
-        while (filled <= size) {
-                this_entry = NULL;
-                this_size  = 0;
-
-                in_case = telldir (bfd->dir);
-                dirent = readdir (bfd->dir);
-                if (!dirent)
-                        break;
-
-                if (IS_BDB_PRIVATE_FILE(dirent->d_name))
-                        continue;
-
-                tmp_name_len = strlen (dirent->d_name);
-                if (entry_path_len < (real_path_len + 1 + (tmp_name_len) + 1)) {
-                        entry_path_len = real_path_len + tmp_name_len + 1024;
-                        entry_path = realloc (entry_path, entry_path_len);
-                        if (entry_path == NULL) {
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "GETDENTS %s - %"GF_PRI_SIZET","
-                                        "%"PRId64" - %s: (failed to allocate "
-                                        "memory for an entry_path)",
-                                        uuid_utoa (fd->inode->gfid), size, off,
-                                        strerror (errno));
-                                op_errno = ENOMEM;
-                                op_ret   = -1;
-                                goto out;
-                        }
-                }
-
-                strncpy (&entry_path[real_path_len+1], dirent->d_name,
-                         tmp_name_len);
-                op_ret = stat (entry_path, &buf);
-                if (op_ret < 0) {
-                        op_errno = errno;
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
-                                " (failed to stat on an entry '%s')",
-                                uuid_utoa (fd->inode->gfid), size, off,
-                                strerror (errno), entry_path);
-                        goto out; /* FIXME: shouldn't we continue here */
-                }
-
-                if ((flag == GF_GET_DIR_ONLY) &&
-                    ((ret != -1) && (!S_ISDIR(buf.st_mode)))) {
-                        continue;
-                }
-
-                this_entry = CALLOC (1, sizeof (*this_entry));
-                if (this_entry == NULL) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
-                                "(failed to allocate memory for an entry)",
-                                uuid_utoa (fd->inode->gfid), size, off,
-                                strerror (errno));
-                        op_errno = ENOMEM;
-                        op_ret   = -1;
-                        goto out;
-                }
-
-                this_entry->name = strdup (dirent->d_name);
-                if (this_entry->name == NULL) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "GETDENTS %s - %"GF_PRI_SIZET",%"PRId64" - %s:"
-                                "(failed to allocate memory for an "
-                                "entry->name)",
-                                uuid_utoa (fd->inode->gfid), size, off,
-                                strerror (errno));
-                        op_errno = ENOMEM;
-                        op_ret   = -1;
-                        goto out;
-                }
-
-                this_entry->buf = buf;
-
-                this_entry->buf.st_ino = -1;
-                if (S_ISLNK(this_entry->buf.st_mode)) {
-                        char linkpath[ZR_PATH_MAX] = {0,};
-                        ret = readlink (entry_path, linkpath, ZR_PATH_MAX);
-                        if (ret != -1) {
-                                linkpath[ret] = '\0';
-                                this_entry->link = strdup (linkpath);
-                        }
-                } else {
-                        this_entry->link = "";
-                }
-
-                count++;
-
-                this_entry->next = entries.next;
-                entries.next = this_entry;
-
-                /* if size is 0, count can never be = size,
-                 * so entire dir is read */
-                if (count == size)
-                        break;
-        }
-        op_ret = filled;
-        op_errno = 0;
-
-out:
-        gf_log (this->name, GF_LOG_DEBUG,
-                "GETDENTS %s - %"GF_PRI_SIZET" (%"PRId32")"
-                "/%"GF_PRI_SIZET",%"PRId64":"
-                "(failed to read the next entry from database)",
-                uuid_utoa (fd->inode->gfid), filled, count, size, off);
-
-        STACK_UNWIND (frame, count, op_errno, &entries);
-
-        while (entries.next) {
-                this_entry = entries.next;
-                entries.next = entries.next->next;
-                FREE (this_entry->name);
-                FREE (this_entry);
-        }
-
-        return 0;
-}/* bdb_getdents */
-
-
-int32_t
 bdb_releasedir (xlator_t *this,
                 fd_t *fd)
 {
@@ -1504,7 +1226,8 @@ int32_t
 bdb_readlink (call_frame_t *frame,
               xlator_t *this,
               loc_t *loc,
-              size_t size)
+              size_t size,
+              dict_t *xdata)
 {
         char   *dest      = NULL;
         int32_t op_ret    = -1;
@@ -1537,12 +1260,13 @@ out:
         return 0;
 }/* bdb_readlink */
 
-
 int32_t
 bdb_mkdir (call_frame_t *frame,
            xlator_t *this,
            loc_t *loc,
-           mode_t mode)
+           mode_t mode,
+           mode_t umask,
+           dict_t *xdata)
 {
         int32_t op_ret = -1;
         int32_t ret = -1;
@@ -1624,11 +1348,12 @@ out:
         return 0;
 }/* bdb_mkdir */
 
-
 int32_t
 bdb_unlink (call_frame_t *frame,
             xlator_t *this,
-            loc_t *loc)
+            loc_t *loc,
+            int xflag,
+            dict_t *xdata)
 {
         int32_t op_ret    = -1;
         int32_t op_errno  = EINVAL;
@@ -1754,7 +1479,9 @@ out:
 int32_t
 bdb_rmdir (call_frame_t *frame,
            xlator_t *this,
-           loc_t *loc)
+           loc_t *loc,
+           int flags,
+           dict_t *xdata)
 {
         int32_t op_ret   = -1;
         int32_t op_errno = 0;
@@ -1795,7 +1522,9 @@ int32_t
 bdb_symlink (call_frame_t *frame,
              xlator_t *this,
              const char *linkname,
-             loc_t *loc)
+             loc_t *loc,
+             mode_t umask,
+             dict_t *xdata)
 {
         int32_t             op_ret    = -1;
         int32_t             op_errno  = EINVAL;
@@ -1871,93 +1600,11 @@ out:
 } /* bdb_symlink */
 
 int32_t
-bdb_chmod (call_frame_t *frame,
-           xlator_t *this,
-           loc_t *loc,
-           mode_t mode)
-{
-        int32_t     op_ret    = -1;
-        int32_t     op_errno  = EINVAL;
-        char       *real_path = NULL;
-        struct stat stbuf     = {0,};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, loc, out);
-
-        MAKE_REAL_PATH (real_path, this, loc->path);
-        op_ret = lstat (real_path, &stbuf);
-        op_errno = errno;
-        if (op_ret != 0) {
-                if (op_errno == ENOENT) {
-                        op_errno = EPERM;
-                } else {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "CHMOD %s (%s): %s(lstat failed)",
-                                uuid_utoa (loc->gfid), loc->path,
-                                strerror (op_errno));
-                }
-                goto out;
-        }
-
-        /* directory or symlink */
-        op_ret = chmod (real_path, mode);
-        op_errno = errno;
-
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, &stbuf);
-
-        return 0;
-}/* bdb_chmod */
-
-
-int32_t
-bdb_chown (call_frame_t *frame,
-           xlator_t *this,
-           loc_t *loc,
-           uid_t uid,
-           gid_t gid)
-{
-        int32_t     op_ret    = -1;
-        int32_t     op_errno  = EINVAL;
-        char       *real_path = NULL;
-        struct stat stbuf     = {0,};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, loc, out);
-
-        MAKE_REAL_PATH (real_path, this, loc->path);
-        op_ret = lstat (real_path, &stbuf);
-        if (op_ret != 0) {
-                op_errno = errno;
-                if (op_errno == ENOENT) {
-                        op_errno = EPERM;
-                } else {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "CHOWN %s (%s): %s"
-                                "(lstat failed)",
-                                uuid_utoa (loc->gfid), loc->path,
-                                strerror (op_errno));
-                }
-                goto out;
-        }
-
-        /* directory or symlink */
-        op_ret = lchown (real_path, uid, gid);
-        op_errno = errno;
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, &stbuf);
-
-        return 0;
-}/* bdb_chown */
-
-
-int32_t
 bdb_truncate (call_frame_t *frame,
               xlator_t *this,
               loc_t *loc,
-              off_t offset)
+              off_t offset,
+              dict_t *xdata)
 {
         int32_t     op_ret     = -1;
         int32_t     op_errno   = EINVAL;
@@ -2026,78 +1673,11 @@ out:
         return 0;
 }/* bdb_truncate */
 
-
-int32_t
-bdb_utimens (call_frame_t *frame,
-             xlator_t *this,
-             loc_t *loc,
-             struct timespec ts[2])
-{
-        int32_t     op_ret    = -1;
-        int32_t     op_errno  = EPERM;
-        char       *real_path = NULL;
-        struct stat stbuf     = {0,};
-        struct timeval tv[2] = {{0,},};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, loc, out);
-
-        MAKE_REAL_PATH (real_path, this, loc->path);
-        op_ret = sys_lstat (real_path, &stbuf);
-        if (op_ret != 0) {
-                op_errno = errno;
-                if (op_errno == ENOENT) {
-                        op_errno = EPERM;
-                } else {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "UTIMENS %s (%s): %s",
-                                uuid_utoa (loc->gfid), loc->path,
-                                strerror (op_errno));
-                }
-                goto out;
-        }
-
-        /* directory or symlink */
-        tv[0].tv_sec  = ts[0].tv_sec;
-        tv[0].tv_usec = ts[0].tv_nsec / 1000;
-        tv[1].tv_sec  = ts[1].tv_sec;
-        tv[1].tv_usec = ts[1].tv_nsec / 1000;
-
-        op_ret = lutimes (real_path, tv);
-        if ((op_ret == -1) && (errno == ENOSYS)) {
-                op_ret = sys_utimes (real_path, tv);
-        }
-
-        if (op_ret == -1) {
-                op_errno = errno;
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "UTIMENS %s (%s): %s",
-                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
-                goto out;
-        }
-
-        op_ret = sys_lstat (real_path, &stbuf);
-        if (op_ret != 0) {
-                op_errno = errno;
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "UTIMENS %s (%s): %s",
-                        uuid_utoa (loc->gfid), loc->path, strerror (op_errno));
-                goto out;
-        }
-
-        stbuf.st_ino = loc->inode->ino;
-
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, &stbuf);
-
-        return 0;
-}/* bdb_utimens */
-
 int32_t
 bdb_statfs (call_frame_t *frame,
             xlator_t *this,
-            loc_t *loc)
+            loc_t *loc,
+            dict_t *xdata)
 
 {
         int32_t        op_ret    = -1;
@@ -2143,7 +1723,8 @@ bdb_setxattr (call_frame_t *frame,
               xlator_t *this,
               loc_t *loc,
               dict_t *dict,
-              int flags)
+              int flags,
+              dict_t *xdata)
 {
         int32_t      op_ret = -1;
         int32_t      op_errno = EINVAL;
@@ -2271,7 +1852,8 @@ int32_t
 bdb_getxattr (call_frame_t *frame,
               xlator_t *this,
               loc_t *loc,
-              const char *name)
+              const char *name,
+              dict_t *xdata)
 {
         int32_t op_ret         = 0;
         int32_t op_errno       = 0;
@@ -2440,7 +2022,8 @@ int32_t
 bdb_removexattr (call_frame_t *frame,
                  xlator_t *this,
                  loc_t *loc,
-                 const char *name)
+                 const char *name,
+                 dict_t *xdata)
 {
         int32_t op_ret    = -1;
         int32_t op_errno  = EINVAL;
@@ -2517,7 +2100,8 @@ int32_t
 bdb_fsyncdir (call_frame_t *frame,
               xlator_t *this,
               fd_t *fd,
-              int datasync)
+              int datasync,
+              dict_t *xdata)
 {
         int32_t op_ret = -1;
         int32_t op_errno = EINVAL;
@@ -2548,7 +2132,8 @@ int32_t
 bdb_access (call_frame_t *frame,
             xlator_t *this,
             loc_t *loc,
-            int32_t mask)
+            int32_t mask,
+            dict_t *xdata)
 {
         int32_t op_ret = -1;
         int32_t op_errno = EINVAL;
@@ -2573,7 +2158,8 @@ int32_t
 bdb_ftruncate (call_frame_t *frame,
                xlator_t *this,
                fd_t *fd,
-               off_t offset)
+               off_t offset,
+               dict_t *xdata)
 {
         int32_t op_ret = -1;
         int32_t op_errno = EPERM;
@@ -2586,176 +2172,6 @@ bdb_ftruncate (call_frame_t *frame,
 out:
         STACK_UNWIND (frame, op_ret, op_errno, &buf);
 
-        return 0;
-}
-
-int32_t
-bdb_fchown (call_frame_t *frame,
-            xlator_t *this,
-            fd_t *fd,
-            uid_t uid,
-            gid_t gid)
-{
-        int32_t op_ret = -1;
-        int32_t op_errno = EPERM;
-        struct stat buf = {0,};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, fd, out);
-
-        /* TODO: implement */
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, &buf);
-
-        return 0;
-}
-
-
-int32_t
-bdb_fchmod (call_frame_t *frame,
-            xlator_t *this,
-            fd_t *fd,
-            mode_t mode)
-{
-        int32_t op_ret = -1;
-        int32_t op_errno = EPERM;
-        struct stat buf = {0,};
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, fd, out);
-
-        /* TODO: impelement */
-out:
-        STACK_UNWIND (frame, op_ret, op_errno, &buf);
-
-        return 0;
-}
-
-int32_t
-bdb_setdents (call_frame_t *frame,
-              xlator_t *this,
-              fd_t *fd,
-              int32_t flags,
-              dir_entry_t *entries,
-              int32_t count)
-{
-        int32_t op_ret = -1, op_errno = EINVAL;
-        char *entry_path = NULL;
-        int32_t real_path_len = 0;
-        int32_t entry_path_len = 0;
-        int32_t ret = 0;
-        struct bdb_dir *bfd = NULL;
-        dir_entry_t *trav = NULL;
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, fd, out);
-        GF_VALIDATE_OR_GOTO (this->name, entries, out);
-
-        BDB_FCTX_GET (fd, this, &bfd);
-        if (bfd == NULL) {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "SETDENTS %s: EBADFD",
-                        uuid_utoa (fd->inode->gfid));
-                op_errno = EBADFD;
-                op_ret   = -1;
-                goto out;
-        }
-
-        real_path_len = strlen (bfd->path);
-        entry_path_len = real_path_len + 256;
-        entry_path = CALLOC (1, entry_path_len);
-        GF_VALIDATE_OR_GOTO (this->name, entry_path, out);
-
-        strcpy (entry_path, bfd->path);
-        entry_path[real_path_len] = '/';
-
-        trav = entries->next;
-        while (trav) {
-                char pathname[ZR_PATH_MAX] = {0,};
-                strcpy (pathname, entry_path);
-                strcat (pathname, trav->name);
-
-                if (S_ISDIR(trav->buf.st_mode)) {
-                        /* If the entry is directory, create it by calling
-                         * 'mkdir'. If directory is not present, it will be
-                         * created, if its present, no worries even if it fails.
-                         */
-                        ret = mkdir (pathname, trav->buf.st_mode);
-                        if ((ret == -1) && (errno != EEXIST)) {
-                                op_errno = errno;
-                                op_ret   = ret;
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %s - %s: %s "
-                                        "(mkdir failed)",
-                                        uuid_utoa (fd->inode->gfid), pathname,
-                                        strerror (op_errno));
-                                goto loop;
-                        }
-
-                        /* Change the mode
-                         * NOTE: setdents tries its best to restore the state
-                         *       of storage. if chmod and chown fail, they can
-                         *       be ignored now */
-                        ret = chmod (pathname, trav->buf.st_mode);
-                        if (ret < 0) {
-                                op_ret   = -1;
-                                op_errno = errno;
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %s - %s: %s (chmod failed)",
-                                        uuid_utoa (fd->inode->gfid), pathname,
-                                        strerror (op_errno));
-                                goto loop;
-                        }
-                        /* change the ownership */
-                        ret = chown (pathname, trav->buf.st_uid,
-                                     trav->buf.st_gid);
-                        if (ret != 0) {
-                                op_ret   = -1;
-                                op_errno = errno;
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %s - %s: %s (chown failed)",
-                                        uuid_utoa (fd->inode->gfid), pathname,
-                                        strerror (op_errno));
-                                goto loop;
-                        }
-                } else if ((flags == GF_SET_IF_NOT_PRESENT) ||
-                           (flags != GF_SET_DIR_ONLY)) {
-                        /* Create a 0 byte file here */
-                        if (S_ISREG (trav->buf.st_mode)) {
-                                op_ret = bdb_db_icreate (bfd->ctx,
-                                                         trav->name);
-                                if (op_ret < 0) {
-                                        gf_log (this->name, GF_LOG_DEBUG,
-                                                "SETDENTS %s (%s) - %s: "
-                                                "%s (database entry creation"
-                                                " failed)",
-                                                uuid_utoa (fd->inode->gfid),
-                                                bfd->ctx->directory, trav->name,
-                                                strerror (op_errno));
-                                }
-                        } else if (S_ISLNK (trav->buf.st_mode)) {
-                                /* TODO: impelement */;
-                        } else {
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "SETDENTS %s (%s) - %s mode=%o: "
-                                        "(unsupported file type)",
-                                        uuid_utoa (fd->inode->gfid),
-                                        bfd->ctx->directory, trav->name,
-                                        trav->buf.st_mode);
-                        } /* if(S_ISREG())...else */
-                } /* if(S_ISDIR())...else if */
-        loop:
-                /* consider the next entry */
-                trav = trav->next;
-        } /* while(trav) */
-
-out:
-        STACK_UNWIND (frame, op_ret, op_errno);
-
-        FREE (entry_path);
         return 0;
 }
 
@@ -2814,7 +2230,8 @@ bdb_readdir (call_frame_t *frame,
              xlator_t *this,
              fd_t *fd,
              size_t size,
-             off_t off)
+             off_t off,
+             dict_t *xdata)
 {
         struct bdb_dir *bfd        = NULL;
         int32_t         op_ret     = -1;
@@ -3000,8 +2417,8 @@ out:
 }
 
 int32_t
-bdb_inodelk (call_frame_t *frame, xlator_t *this,
-             const char *volume, loc_t *loc, int32_t cmd, struct flock *lock)
+bdb_inodelk (call_frame_t *frame, xlator_t *this, const char *volume,
+             loc_t *loc, int32_t cmd, struct gf_flock *lock, dict_t *xdata)
 {
         gf_log (this->name, GF_LOG_ERROR,
                 "glusterfs internal locking request. please load "
@@ -3014,8 +2431,8 @@ bdb_inodelk (call_frame_t *frame, xlator_t *this,
 
 
 int32_t
-bdb_finodelk (call_frame_t *frame, xlator_t *this,
-              const char *volume, fd_t *fd, int32_t cmd, struct flock *lock)
+bdb_finodelk (call_frame_t *frame, xlator_t *this, const char *volume,
+              fd_t *fd, int32_t cmd, struct gf_flock *lock, dict_t *xdata)
 {
         gf_log (this->name, GF_LOG_ERROR,
                 "glusterfs internal locking request. please load "
@@ -3030,7 +2447,7 @@ bdb_finodelk (call_frame_t *frame, xlator_t *this,
 int32_t
 bdb_entrylk (call_frame_t *frame, xlator_t *this,
              const char *volume, loc_t *loc, const char *basename,
-             entrylk_cmd cmd, entrylk_type type)
+             entrylk_cmd cmd, entrylk_type type, dict_t *xdata)
 {
         gf_log (this->name, GF_LOG_ERROR,
                 "glusterfs internal locking request. please load "
@@ -3045,7 +2462,7 @@ bdb_entrylk (call_frame_t *frame, xlator_t *this,
 int32_t
 bdb_fentrylk (call_frame_t *frame, xlator_t *this,
               const char *volume, fd_t *fd, const char *basename,
-              entrylk_cmd cmd, entrylk_type type)
+              entrylk_cmd cmd, entrylk_type type, dict_t *xdata)
 {
         gf_log (this->name, GF_LOG_ERROR,
                 "glusterfs internal locking request. please load "
@@ -3053,117 +2470,6 @@ bdb_fentrylk (call_frame_t *frame, xlator_t *this,
                 "support");
 
         STACK_UNWIND (frame, -1, ENOSYS);
-        return 0;
-}
-
-int32_t
-bdb_checksum (call_frame_t *frame,
-              xlator_t *this,
-              loc_t *loc,
-              int32_t flag)
-{
-        char          *real_path = NULL;
-        DIR           *dir       = NULL;
-        struct dirent *dirent    = NULL;
-        uint8_t        file_checksum[ZR_FILENAME_MAX] = {0,};
-        uint8_t        dir_checksum[ZR_FILENAME_MAX]  = {0,};
-        int32_t        op_ret   = -1;
-        int32_t        op_errno = EINVAL;
-        int32_t        idx = 0, length = 0;
-        bctx_t        *bctx    = NULL;
-        DBC           *cursorp = NULL;
-        char          *data    = NULL;
-        uint8_t        no_break = 1;
-
-        GF_VALIDATE_OR_GOTO ("bdb", frame, out);
-        GF_VALIDATE_OR_GOTO ("bdb", this, out);
-        GF_VALIDATE_OR_GOTO (this->name, loc, out);
-
-        MAKE_REAL_PATH (real_path, this, loc->path);
-
-        {
-                dir = opendir (real_path);
-                op_errno = errno;
-                GF_VALIDATE_OR_GOTO (this->name, dir, out);
-                while ((dirent = readdir (dir))) {
-                        if (!dirent)
-                                break;
-
-                        if (IS_BDB_PRIVATE_FILE(dirent->d_name))
-                                continue;
-
-                        length = strlen (dirent->d_name);
-                        for (idx = 0; idx < length; idx++)
-                                dir_checksum[idx] ^= dirent->d_name[idx];
-                } /* while((dirent...)) */
-                closedir (dir);
-        }
-
-        {
-                bctx = bctx_lookup (B_TABLE(this), (char *)loc->path);
-                if (bctx == NULL) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "CHECKSUM %s (%s): ENOMEM"
-                                "(failed to lookup database handle)",
-                                uuid_utoa(loc->inode->gfid), loc->path);
-                        op_ret   = -1;
-                        op_errno = ENOMEM;
-                        goto out;
-                }
-
-                op_ret = bdb_cursor_open (bctx, &cursorp);
-                if (op_ret < 0) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "CHECKSUM %s (%s): EBADFD"
-                                "(failed to open cursor to database handle)",
-                                uuid_utoa (loc->inode->gfid), loc->path);
-                        op_ret   = -1;
-                        op_errno = EBADFD;
-                        goto out;
-                }
-
-
-                do {
-                        DBT key = {0,}, value = {0,}, sec = {0,};
-
-                        key.flags = DB_DBT_MALLOC;
-                        value.doff = 0;
-                        value.dlen = 0;
-                        op_ret = bdb_cursor_get (cursorp, &sec, &key,
-                                                 &value, DB_NEXT);
-
-                        if (op_ret == DB_NOTFOUND) {
-                                op_ret = 0;
-                                op_errno = 0;
-                                no_break = 0;
-                        } else if (op_ret == 0){
-                                /* successfully read */
-                                data = key.data;
-                                length = key.size;
-                                for (idx = 0; idx < length; idx++)
-                                        file_checksum[idx] ^= data[idx];
-
-                                FREE (key.data);
-                        } else {
-                                gf_log (this->name, GF_LOG_DEBUG,
-                                        "CHECKSUM %s (%s)",
-                                        uuid_utoa(loc->inode->gfid), loc->path);
-                                op_ret = -1;
-                                op_errno = ENOENT; /* TODO: watch errno */
-                                no_break = 0;
-                        }/* if(op_ret == DB_NOTFOUND)...else if...else */
-                } while (no_break);
-                bdb_cursor_close (bctx, cursorp);
-        }
-out:
-        if (bctx) {
-                /* NOTE: bctx_unref always returns success,
-                 * see description of bctx_unref for more details */
-                bctx_unref (bctx);
-        }
-
-        STACK_UNWIND (frame, op_ret, op_errno, file_checksum, dir_checksum);
-
         return 0;
 }
 
@@ -3417,10 +2723,7 @@ struct xlator_fops fops = {
         .symlink     = bdb_symlink,
         .rename      = bdb_rename,
         .link        = bdb_link,
-        .chmod       = bdb_chmod,
-        .chown       = bdb_chown,
         .truncate    = bdb_truncate,
-        .utimens     = bdb_utimens,
         .create      = bdb_create,
         .open        = bdb_open,
         .readv       = bdb_readv,
@@ -3440,11 +2743,6 @@ struct xlator_fops fops = {
         .finodelk    = bdb_finodelk,
         .entrylk     = bdb_entrylk,
         .fentrylk    = bdb_fentrylk,
-        .fchown      = bdb_fchown,
-        .fchmod      = bdb_fchmod,
-        .setdents    = bdb_setdents,
-        .getdents    = bdb_getdents,
-        .checksum    = bdb_checksum,
 };
 
 struct xlator_cbks cbks = {
